@@ -43,7 +43,7 @@ export function MessageRequestSheet({ isOpen, onClose, targetUser, currentUser, 
     setIsSending(true);
     // Simulate network delay
     setTimeout(() => {
-      sendRequest(currentUser.username, targetUser.username, message, currentUser.avatar);
+      sendRequest(currentUser?.username || 'unknown', targetUser?.username || 'unknown', message, currentUser?.avatar || '');
       setIsSending(false);
       setMessage('');
       onRequestSent();
@@ -93,11 +93,11 @@ export function MessageRequestSheet({ isOpen, onClose, targetUser, currentUser, 
           <div className="px-6 pb-6 space-y-5">
             {/* Target User Info */}
             <div className="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/5">
-              <AvatarWithRing src={targetUser.avatar} size="md" />
+              <AvatarWithRing src={targetUser?.avatar} size="md" />
               <div className="flex flex-col">
                 <span className="text-sm font-semibold text-white">Sending request to</span>
-                <span className="text-sm font-bold text-white">{targetUser.displayName}</span>
-                <span className="text-xs text-gray-400">{targetUser.username}</span>
+                <span className="text-sm font-bold text-white">{targetUser?.displayName}</span>
+                <span className="text-xs text-gray-400">{targetUser?.username}</span>
               </div>
             </div>
 

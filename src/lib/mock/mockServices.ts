@@ -1,6 +1,6 @@
 import { FEATURE_FLAGS } from '../config/featureFlags';
 import { 
-  mockPosts, mockStories, mockReels, mockChats, 
+  mockPosts, mockSparks, mockReels, mockChats, 
   mockMessages, mockNotifications, mockCommunities, 
   mockCreatorStats, mockUsers, mockAds, mockAdminData 
 } from './mockData';
@@ -12,9 +12,9 @@ export const getPosts = async () => {
   return [...mockPosts];
 };
 
-export const getStories = async () => {
+export const getSparks = async () => {
   await delay(500);
-  return [...mockStories];
+  return [...mockSparks];
 };
 
 export const getReels = async () => {

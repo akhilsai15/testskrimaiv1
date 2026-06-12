@@ -26,10 +26,10 @@ export const SKRIM_REACTIONS = [
   { id: 'pulse', emoji: '⚡', name: 'PULSE', color: '#B026FF' },
   { id: 'blaze', emoji: '🔥', name: 'BLAZE', color: '#FF6B00' },
   { id: 'vibe',  emoji: '💜', name: 'VIBE',  color: '#CC44FF' },
-  { id: 'nova',  emoji: '🚀', name: 'NOVA',  color: '#FFFFFF' },
+  { id: 'nova',  emoji: '🚀', name: 'NOVA',  color: '#FF2D87' },
   { id: 'slay',  emoji: '😤', name: 'SLAY',  color: '#FF2D87' },
   { id: 'haunt', emoji: '👻', name: 'HAUNT', color: '#88AAFF' },
-  { id: 'dead',  emoji: '💀', name: 'DEAD',  color: '#666666' },
+  { id: 'dead',  emoji: '💀', name: 'DEAD',  color: '#888888' },
   { id: 'wave',  emoji: '🌊', name: 'WAVE',  color: '#00F0FF' },
 ];
 
@@ -40,6 +40,8 @@ const funnyCaptions = [
   "Traffic mein 2 ghante\n  maar diye 🚗😤\n  Lekin playlist fire thi 🔥\n  #MumbaiTraffic #DesiLife",
   "Wedding season shuru\n  ho gaya bhai 💍🎉\n  Shaadi mein khana free\n  isliye attendance 100% 😂\n  #ShaadiKaKhana #FreeFood",
 ];
+
+const randomBetween = (min: number, max: number) => Math.floor(Math.random() * (max - min) + min);
 
 export const mockPosts = Array.from({ length: 20 }).map((_, i) => ({
   id: `post_${i + 1}`,
@@ -57,26 +59,284 @@ export const mockPosts = Array.from({ length: 20 }).map((_, i) => ({
   isLiked: false,
   isSaved: false,
   reactions: {
-    pulse: 4200,
-    blaze: 3100,
-    vibe: 2800,
-    nova: 1500,
-    slay: 980,
-    haunt: 750,
-    dead: 3400,
-    wave: 620
+    pulse: randomBetween(1000, 8000),
+    blaze: randomBetween(800, 5000),
+    vibe:  randomBetween(500, 4000),
+    nova:  randomBetween(300, 3000),
+    slay:  randomBetween(200, 2000),
+    haunt: randomBetween(100, 1500),
+    dead:  randomBetween(500, 4000),
+    wave:  randomBetween(100, 1000)
   }
 }));
 
-export const mockStories = Array.from({ length: 10 }).map((_, i) => ({
-  id: `story_${i + 1}`,
-  userId: mockUsers[i % mockUsers.length].id,
-  user: mockUsers[i % mockUsers.length].username,
-  avatar: mockUsers[i % mockUsers.length].avatar,
-  image: `https://picsum.photos/400/700?random=${i + 100}`,
-  hasStory: true,
-  isAdd: false,
-}));
+export type SparkEnergy = 'COLD' | 'WARMING' | 'HOT' | 'NOVA' | 'DEAD';
+export type SparkMood = '😂 Funny' | '🔥 Trending' | '💜 Chill' | '🚀 Inspiring' | '💀 Unhinged';
+
+export function calculateEnergyScore(views: number, reactions: number, replies: number, shares: number, saves: number) {
+  return (views * 1) + (reactions * 5) + (replies * 10) + (shares * 15) + (saves * 8);
+}
+
+export function getEnergyFromScore(score: number): SparkEnergy {
+  if (score < 500) return 'COLD';
+  if (score < 2000) return 'WARMING';
+  if (score < 5000) return 'HOT';
+  if (score < 10000) return 'NOVA';
+  return 'DEAD';
+}
+
+export const mockSparks = [
+  {
+    id: "collab_mock_001",
+    user: mockUsers[1], // Pappu
+    isCollab: true,
+    creator: mockUsers[1],
+    collabPartner: mockUsers[4], // Dolly
+    status: "accepted",
+    text: "Best duo in the game! 🔥",
+    type: "text",
+    backgroundTheme: "linear-gradient(135deg, #1D4ED8, #7C3AED)",
+    createdAt: Date.now() - (3 * 60 * 60 * 1000),
+    expiresAt: Date.now() - (3 * 60 * 60 * 1000) + (24 * 60 * 60 * 1000),
+    views: 1200,
+    energy: "HOT" as SparkEnergy,
+    mood: "🔥 Trending" as SparkMood,
+    timeAgo: '3h',
+    reactions: { pulse: 234, blaze: 189, vibe: 67 },
+    caption: '',
+    replies: 47,
+    shares: 23,
+    saves: 89,
+    isOwn: false,
+    hasViewed: false
+  },
+  {
+    id: 'spark_0_1',
+    user: mockUsers[0],
+    type: 'image',
+    image: 'https://picsum.photos/400/700?random=120',
+    mood: '💜 Chill' as SparkMood,
+    energy: 'WARMING' as SparkEnergy,
+    caption: '4AM chai session ☕',
+    views: 1247,
+    reactions: { pulse: 234, blaze: 189, vibe: 67 },
+    isChallenge: false,
+    challengeText: '',
+    isCollab: false,
+    creators: [],
+    timeAgo: '4h',
+    isOwn: false,
+    hasViewed: false,
+    replies: 47,
+    shares: 23,
+    saves: 89
+  },
+  {
+    id: 'spark_0_2',
+    user: mockUsers[0],
+    type: 'text',
+    background: 'dark',
+    text: 'Still awake 😂',
+    image: '',
+    mood: '😂 Funny' as SparkMood,
+    energy: 'HOT' as SparkEnergy,
+    caption: '',
+    views: 800,
+    reactions: { blaze: 100 },
+    isChallenge: false,
+    challengeText: '',
+    isCollab: false,
+    creators: [],
+    timeAgo: '2h',
+    isOwn: false,
+    hasViewed: false,
+    replies: 10,
+    shares: 0,
+    saves: 0
+  },
+  {
+    id: 'spark_0_3',
+    user: mockUsers[0],
+    type: 'text',
+    background: 'purple',
+    text: 'Starting my journey! 💪\n@sarah_tech wish me luck!\n#GymLife #Fitness',
+    mentions: ['@sarah_tech'],
+    hashtags: ['#GymLife', '#Fitness'],
+    image: '',
+    mood: '💜 Chill' as SparkMood,
+    energy: 'COLD' as SparkEnergy,
+    caption: '',
+    views: 50,
+    reactions: { pulse: 5 },
+    isChallenge: false,
+    challengeText: '',
+    isCollab: false,
+    creators: [],
+    timeAgo: '10m',
+    isOwn: false,
+    hasViewed: false,
+    replies: 0,
+    shares: 0,
+    saves: 0
+  },
+  {
+    id: 'spark_1_1',
+    user: mockUsers[1],
+    type: 'image',
+    image: 'https://picsum.photos/400/700?random=102',
+    mood: '🚀 Inspiring' as SparkMood,
+    energy: 'NOVA' as SparkEnergy,
+    caption: 'Finally passed!! 🎓',
+    views: 8921,
+    reactions: { pulse: 1200, blaze: 890, dead: 670 },
+    isChallenge: false,
+    challengeText: '',
+    isCollab: false,
+    creators: [],
+    timeAgo: '30m',
+    isOwn: false,
+    hasViewed: false,
+    replies: 124,
+    shares: 89,
+    saves: 342
+  },
+  {
+    id: 'spark_1_2',
+    user: mockUsers[1],
+    type: 'text',
+    background: 'fire',
+    text: 'Game on! 🎮\n#Gaming #India',
+    mentions: [],
+    hashtags: ['#Gaming', '#India'],
+    image: '',
+    mood: '🔥 Trending' as SparkMood,
+    energy: 'HOT' as SparkEnergy,
+    caption: '',
+    views: 4000,
+    reactions: { vibe: 500 },
+    isChallenge: false,
+    challengeText: '',
+    isCollab: false,
+    creators: [],
+    timeAgo: '10m',
+    isOwn: false,
+    hasViewed: false,
+    replies: 50,
+    shares: 10,
+    saves: 20
+  },
+  {
+    id: 'spark_2_1',
+    user: mockUsers[2],
+    type: 'text',
+    background: 'purple',
+    text: 'Best food in town 🍕\n@cool_guy you\'d love this!\n#Food #Mumbai',
+    mentions: ['@cool_guy'],
+    hashtags: ['#Food', '#Mumbai'],
+    image: '',
+    mood: '😂 Funny' as SparkMood,
+    energy: 'WARMING' as SparkEnergy,
+    caption: '',
+    views: 456,
+    reactions: {},
+    isChallenge: false,
+    challengeText: '',
+    isCollab: false,
+    creators: [],
+    timeAgo: '3h',
+    isOwn: false,
+    hasViewed: false,
+    replies: 23,
+    shares: 8,
+    saves: 15
+  },
+  {
+    id: 'spark_4_1',
+    user: mockUsers[4],
+    type: 'image',
+    image: 'https://picsum.photos/400/700?random=103',
+    mood: '🔥 Trending' as SparkMood,
+    energy: 'HOT' as SparkEnergy,
+    caption: 'New recipe! 🍛',
+    views: 3421,
+    reactions: { blaze: 567, vibe: 432 },
+    isChallenge: true,
+    challengeText: 'Make this dish\nand tag me! 🍛',
+    isCollab: false,
+    creators: [],
+    timeAgo: '1h',
+    isOwn: false,
+    hasViewed: false,
+    replies: 89,
+    shares: 45,
+    saves: 120
+  },
+  {
+    id: 'spark_4_2',
+    user: mockUsers[4],
+    type: 'text',
+    background: 'fire',
+    text: 'Result! Try this 👀',
+    image: '',
+    mood: '🔥 Trending' as SparkMood,
+    energy: 'HOT' as SparkEnergy,
+    caption: '',
+    views: 1000,
+    reactions: {},
+    isChallenge: false,
+    challengeText: '',
+    isCollab: false,
+    creators: [],
+    timeAgo: '30m',
+    isOwn: false,
+    hasViewed: false,
+    replies: 10,
+    shares: 5,
+    saves: 20
+  },
+  {
+    id: 'spark_5_1',
+    user: mockUsers[5],
+    type: 'image',
+    image: 'https://picsum.photos/400/700?random=105',
+    mood: '💜 Chill' as SparkMood,
+    energy: 'COLD' as SparkEnergy,
+    caption: 'Post gym vibes 💪',
+    views: 234,
+    reactions: { pulse: 45, vibe: 23 },
+    isChallenge: false,
+    challengeText: '',
+    isCollab: false,
+    creators: [],
+    timeAgo: '6h',
+    isOwn: false,
+    hasViewed: true,
+    replies: 5,
+    shares: 2,
+    saves: 1
+  },
+  {
+    id: 'spark_10',
+    user: mockUsers[9],
+    type: 'image',
+    image: 'https://picsum.photos/400/700?random=110',
+    mood: '🔥 Trending' as SparkMood,
+    energy: 'HOT' as SparkEnergy,
+    caption: 'Testing SkrimChat\nSparks! ⚡',
+    views: 47,
+    reactions: {},
+    isChallenge: false,
+    challengeText: '',
+    isCollab: false,
+    creators: [],
+    timeAgo: '20m',
+    isOwn: true,
+    hasViewed: false,
+    replies: 2,
+    shares: 0,
+    saves: 1
+  }
+];
 
 export const mockReels = Array.from({ length: 10 }).map((_, i) => ({
   id: `reel_${i + 1}`,
@@ -90,14 +350,14 @@ export const mockReels = Array.from({ length: 10 }).map((_, i) => ({
   comments: `${Math.floor(Math.random() * 5)}K`,
   shares: `${Math.floor(Math.random() * 10)}K`,
   reactions: {
-    pulse: 4200,
-    blaze: 3100,
-    vibe: 2800,
-    nova: 1500,
-    slay: 980,
-    haunt: 750,
-    dead: 3400,
-    wave: 620
+    pulse: randomBetween(1000, 8000),
+    blaze: randomBetween(800, 5000),
+    vibe:  randomBetween(500, 4000),
+    nova:  randomBetween(300, 3000),
+    slay:  randomBetween(200, 2000),
+    haunt: randomBetween(100, 1500),
+    dead:  randomBetween(500, 4000),
+    wave:  randomBetween(100, 1000)
   }
 }));
 
@@ -161,3 +421,25 @@ export const mockAdminData = {
   userManagement: "8.4K",
   chartData: [100, 150, 120, 200, 180, 250, 300]
 };
+
+const offsets = [
+  1 * 3600 * 1000,
+  2 * 3600 * 1000,
+  3 * 3600 * 1000,
+  4 * 3600 * 1000,
+  5 * 3600 * 1000,
+  6 * 3600 * 1000,
+  7 * 3600 * 1000,
+  8 * 3600 * 1000,
+  9 * 3600 * 1000,
+  10 * 3600 * 1000,
+  11 * 3600 * 1000
+];
+
+mockSparks.forEach((s: any, i) => {
+  const off = offsets[i % offsets.length];
+  s.createdAt = Date.now() - off;
+  s.expiresAt = s.createdAt + 24 * 60 * 60 * 1000;
+  // Let timeAgo visually reflect this if needed, though they already have static ones. 
+  // It's better to update it dynamically if possible, or just leave timeAgo as random strings.
+});

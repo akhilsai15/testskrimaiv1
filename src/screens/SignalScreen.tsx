@@ -6,15 +6,23 @@ import { FEATURE_FLAGS } from '../lib/config/featureFlags';
 import { AvatarWithRing } from '../components/ui';
 import { Link } from 'react-router-dom';
 
+import { ArrowLeft } from 'lucide-react';
+import { SparkViewer } from '../components/SparkViewer';
+import { useCurrentUser } from '../hooks/useCurrentUser';
+
 export default function SignalScreen() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [activeSpark, setActiveSpark] = useState<any>(null);
+  const [activeGroup, setActiveGroup] = useState<any>(null);
+  const currentUser = useCurrentUser();
 
   useEffect(() => {
     const fetchNotifs = async () => {
       setLoading(true);
+      let loadedNotifs: any[] = [];
       if (FEATURE_FLAGS.MOCK_MODE) {
         const baseNotifs = await getNotifications();
         // Inject FOMO notifications
@@ -22,9 +30,65 @@ export default function SignalScreen() {
            { id: 'fomo1', user: 'NeonSamurai', avatar: 'https://i.pravatar.cc/150?img=2', type: 'fomo', text: 'just became a BLAZE CREATOR! 🔥', isRead: false, time: '2m' },
            { id: 'fomo2', user: 'CyberGhost', avatar: 'https://i.pravatar.cc/150?img=1', type: 'fomo', text: 'unlocked the FLAME CREATOR badge! ☄️', isRead: true, time: '1h' }
         ];
+        
+        let sparkExpiryNotifs: any[] = [];
+        const mySparksStr = localStorage.getItem('skrimchat_sparks');
+        if (mySparksStr) {
+          try {
+            const mySparks = JSON.parse(mySparksStr);
+            const now = Date.now();
+            mySparks.forEach((s: any) => {
+              if (s.expiresAt && s.expiresAt > now && s.expiresAt - now <= 60 * 60 * 1000) {
+                const mins = Math.floor((s.expiresAt - now) / 60000);
+                sparkExpiryNotifs.push({
+                   id: 'expiry_' + s.id,
+                   user: 'System',
+                   avatar: '',
+                   type: 'alert',
+                   text: `⏰ Your Spark expires in ${mins} minute${mins !== 1 ? 's' : ''}! Save it to Highlights to keep it forever! ✨`,
+                   isRead: false,
+                   time: 'Just now',
+                   sparkId: s.id
+                });
+              }
+            });
+          } catch(e) {}
+        }
+
+        let collabInvitesNotifs: any[] = [];
+        const savedInvitesStr = localStorage.getItem('skrimchat_collab_invites');
+        if (savedInvitesStr) {
+          try {
+            const invites = JSON.parse(savedInvitesStr);
+            invites.forEach((invite: any) => {
+              if (invite.status === 'pending' && invite.spark.collabPartner) {
+                collabInvitesNotifs.push({
+                   id: invite.id,
+                   user: invite.spark.creator?.username || invite.spark.creator?.displayName || "User",
+                   avatar: invite.spark.creator?.avatar || '',
+                   type: 'collab_invite',
+                   text: `invited you to collab on a spark! ✨`,
+                   isRead: false,
+                   time: 'Just now',
+                   spark: invite.spark
+                });
+              }
+            });
+          } catch(e) {}
+        }
+        
+        let mentionNotifs: any[] = [];
+        const savedMentionsStr = localStorage.getItem('skrimchat_mention_notifs');
+        if (savedMentionsStr) {
+          try {
+             mentionNotifs = JSON.parse(savedMentionsStr);
+          } catch(e) {}
+        }
+        
         // randomly insert them
-        setNotifications([...fomoNotifs, ...baseNotifs]);
+        loadedNotifs = [...mentionNotifs, ...collabInvitesNotifs, ...sparkExpiryNotifs, ...fomoNotifs, ...baseNotifs];
       }
+      setNotifications(loadedNotifs);
       setLoading(false);
     };
     fetchNotifs();
@@ -79,13 +143,28 @@ export default function SignalScreen() {
                    {notif.type === 'mention' && <span className="text-[10px] text-neon-purple font-black">@</span>}
                    {notif.type === 'follow' && <UserPlus className="w-2.5 h-2.5 text-green-400" />}
                    {notif.type === 'fomo' && <span className="text-[10px]">🔥</span>}
+                   {notif.type === 'collab_invite' && <span className="text-[10px]">👥</span>}
                  </div>
               </div>
-              <div className="flex-1">
+              <div className="flex-1" onClick={() => {
+                 if (notif.type === 'alert' && notif.sparkId) {
+                   const mySparksStr = localStorage.getItem('skrimchat_sparks');
+                   if (mySparksStr) {
+                     const mySparks = JSON.parse(mySparksStr);
+                     const spark = mySparks.find((s: any) => s.id === notif.sparkId);
+                     if (spark) setActiveSpark(spark);
+                   }
+                 } else if (notif.type === 'collab_invite' && notif.spark) {
+                   setActiveSpark(notif.spark);
+                 }
+              }}>
                  <p className="text-sm">
                     <span 
                        className="font-semibold text-white cursor-pointer hover:underline"
-                       onClick={() => navigate(`/profile/${notif.user.replace(/\s+/g, '_').toLowerCase()}`)}
+                       onClick={(e) => {
+                         e.stopPropagation();
+                         navigate(`/profile/${notif.user.replace(/\s+/g, '_').toLowerCase()}`);
+                       }}
                     >{notif.user}</span>{' '}
                     <span className="text-gray-400">{notif.text}</span>
                  </p>
@@ -94,6 +173,32 @@ export default function SignalScreen() {
            </div>
         ))}
       </div>
+      {activeSpark && currentUser && (
+        <SparkViewer
+          groupedSparks={[{
+            userId: activeSpark.user?.username || currentUser.username || currentUser.id || 'me',
+            user: activeSpark.user || { ...currentUser, avatar: currentUser.avatar || currentUser.avatarUrl },
+            isOwn: activeSpark.userId === currentUser.username,
+            sparks: [activeSpark],
+            maxEnergy: 50
+          }]}
+          initialUserIndex={0}
+          onClose={() => setActiveSpark(null)}
+          currentUser={currentUser}
+          initialActiveSheet="highlight"
+          onDelete={() => setActiveSpark(null)}
+        />
+      )}
+      {activeGroup && currentUser && (
+        <SparkViewer
+          groupedSparks={[activeGroup]}
+          initialUserIndex={0}
+          onClose={() => setActiveGroup(null)}
+          currentUser={currentUser}
+          initialActiveSheet="highlight"
+          onDelete={() => setActiveGroup(null)}
+        />
+      )}
     </div>
   );
 }

@@ -26,6 +26,10 @@
   .shadow-neon-purple {
     box-shadow: 0 0 15px rgba(176, 38, 255, 0.4);
   }
+
+  .vibe-tabs::-webkit-scrollbar {
+    display: none;
+  }
   
   .no-scrollbar::-webkit-scrollbar {
     display: none;
@@ -76,4 +80,30 @@
 body {
   background-color: var(--color-skrim-bg);
   color: #FFFFFF;
+}
+
+@keyframes flashRing {
+  0% { opacity: 1; box-shadow: 0 0 10px red; }
+  100% { opacity: 0.5; box-shadow: 0 0 20px red; }
+}
+
+@keyframes livePulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes orbitSpark {
+  from {
+    transform: rotate(0deg) translateX(var(--orbit-radius, 32px)) rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg) translateX(var(--orbit-radius, 32px)) rotate(-360deg);
+  }
+}
+
+@keyframes highlightPulse {
+  0%   { box-shadow: 0 0 8px #B026FF; }
+  50%  { box-shadow: 0 0 20px #B026FF, 0 0 40px #B026FF44; }
+  100% { box-shadow: 0 0 8px #B026FF; }
 }

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Heart, MessageCircle, Share, Music, Send, Link as LinkIcon, Zap, Shield, SmilePlus } from 'lucide-react';
+import { X, Heart, MessageCircle, Share, Music, Send, Link as LinkIcon, Zap, Shield, SmilePlus, Bookmark } from 'lucide-react';
 import { SKRIM_REACTIONS } from '../lib/mock/mockData';
 import { BadgeRow } from './BadgeComponents';
 import { ReactionRow } from './ReactionRow';
+import { triggerReactionAnimation } from '../lib/animations/reactionAnimations';
 import { generateMockStatsForBadge } from '../lib/mock/mockBadges';
 
 interface ImmersivePostViewerProps {
@@ -47,6 +48,7 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, onClose }:
   ]);
   const [commentInput, setCommentInput] = useState('');
   const [toastMessage, setToastMessage] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
   const [reactions, setReactions] = useState<Record<string, number>>({ 
     pulse: 4200,
     blaze: 3100,
@@ -110,11 +112,6 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, onClose }:
   };
 
   const handleTriggerReaction = (r: typeof SKRIM_REACTIONS[0], e?: React.MouseEvent) => {
-    setActiveEffect(r.id);
-    setTimeout(() => {
-      setActiveEffect(prev => prev === r.id ? null : prev);
-    }, r.id === 'nova' ? 800 : 500);
-
     setLastReaction(r);
     if (e) addRipple(e);
 
@@ -123,12 +120,10 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, onClose }:
       [r.id]: (prev[r.id] || 0) + 1
     }));
     
-    let count = 3;
-    if (r.id === 'nova') count = 1;
-    if (r.id === 'vibe') count = 5;
-    if (r.id === 'slay') count = 2; 
-
-    spawnEmojis(r, count);
+    const container = document.getElementById(`immersive-image-${currentIndex}`);
+    if (container) {
+       triggerReactionAnimation(container, r.id, r.emoji);
+    }
   };
 
   useEffect(() => {
@@ -156,7 +151,8 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, onClose }:
       setPulsed(true);
       setPulsesCount(prev => prev + 1);
       if (e) addRipple(e);
-      spawnEmojis({ id: 'pulse', emoji: '⚡', name: 'Pulse', color: '#B026FF' }, 3);
+      const container = document.getElementById(`immersive-image-${currentIndex}`);
+      if (container) triggerReactionAnimation(container, 'pulse', '⚡');
     }
   };
 
@@ -167,13 +163,10 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, onClose }:
       setPulsesCount(prev => prev + 1);
       addRipple(e);
     }
-    setShowBigPulse(true);
-    setTimeout(() => setShowBigPulse(false), 800);
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    spawnEmojis({ id: 'pulse', emoji: '⚡', name: 'Pulse', color: '#B026FF' }, 5, x, y);
+    
+    // We can rely on the triggerReactionAnimation for the big pulse and particles
+    const container = document.getElementById(`immersive-image-${currentIndex}`);
+    if (container) triggerReactionAnimation(container, 'pulse', '⚡');
   };
 
   const handleDragEnd = (_e: any, { offset, velocity }: any) => {
@@ -187,9 +180,13 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, onClose }:
       } else if (swipeY > 50 && currentIndex > 0) {
         setCurrentIndex(currentIndex - 1);
         setPulsed(false);
+      } else if (swipeY > 100 || (swipeY > 50 && velocity.y > 500 && currentIndex === 0)) {
+        onClose();
       }
     } else {
-      if (swipeX < -50 && currentIndex < urls.length - 1) {
+      if (swipeY > 100 || (swipeY > 50 && velocity.y > 500)) {
+        onClose();
+      } else if (swipeX < -50 && currentIndex < urls.length - 1) {
         setCurrentIndex(currentIndex + 1);
         setPulsed(false);
       } else if (swipeX > 50 && currentIndex > 0) {
@@ -391,13 +388,15 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, onClose }:
       <div className="relative z-10 w-full h-[65dvh] max-h-[800px] flex items-center justify-center">
         <AnimatePresence mode="popLayout">
           <motion.div
+            id={`immersive-image-${currentIndex}`}
             key={currentIndex}
             initial={{ opacity: 0, scale: 0.8, x: 200 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
             exit={{ opacity: 0, scale: 0.8, x: -200 }}
             transition={{ type: "spring", bounce: 0.4, duration: 0.8 }}
-            drag={type === 'vibe' ? "y" : "x"}
-            dragConstraints={type === 'vibe' ? { top: 0, bottom: 0 } : { left: 0, right: 0 }}
+            drag={true}
+            dragDirectionLock
+            dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
             onDragEnd={handleDragEnd}
             onPointerDown={handlePointerDown}
             onPointerUp={handlePointerUp}
@@ -526,10 +525,9 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, onClose }:
           </div>
           
           <div className="mb-6">
-            <ReactionRow initialReactions={reactions as Record<string, number>} onReact={(rId) => {
-              if (rId) {
-                const r = SKRIM_REACTIONS.find(x => x.id === rId);
-                if (r) handleTriggerReaction(r, null as any);
+            <ReactionRow initialReactions={reactions as Record<string, number>} onReact={(rId, r) => {
+              if (rId && r) {
+                handleTriggerReaction(r, null as any);
               }
             }} />
           </div>
@@ -540,34 +538,24 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, onClose }:
               <Zap className={`w-8 h-8 transition-all drop-shadow-md duration-300 lg:group-hover:scale-110 ${pulsed ? "text-[#B026FF] fill-[#B026FF]" : "text-white group-hover:text-[#B026FF]"}`} style={pulsed ? { filter: 'drop-shadow(0 0 12px #B026FF)' } : {}} />
               <span className="text-xs font-bold text-white">{pulsesCount >= 1000 ? parseFloat((pulsesCount / 1000).toFixed(3)) + 'K' : pulsesCount}</span>
             </button>
-            <div className="relative">
-              <button 
-                onPointerDown={handlePointerDown}
-                onPointerUp={handlePointerUp}
-                onPointerLeave={handlePointerUp}
-                onClick={(e) => {
-                  if (lastReaction) handleTriggerReaction(lastReaction, e);
-                  else setShowReactionPicker(true);
-                }} 
-                className="flex flex-col items-center gap-1 group"
-              >
-                <div className="w-8 h-8 flex flex-col items-center justify-center transition-all duration-300 lg:group-hover:scale-110">
-                  {lastReaction ? (
-                    <span className="text-2xl drop-shadow-md" style={{ filter: `drop-shadow(0 0 8px ${lastReaction.color}80)` }}>{lastReaction.emoji}</span>
-                  ) : (
-                    <SmilePlus className="w-7 h-7 text-white/50 group-hover:text-white transition-colors" />
-                  )}
-                </div>
-                <span className="text-xs font-bold text-white">React</span>
-              </button>
-            </div>
             <button onClick={(e) => { setShowCommentsSheet(true); addRipple(e); }} className="flex flex-col items-center gap-1 group">
               <MessageCircle className="w-7 h-7 text-white group-hover:text-[#00F0FF] transition-colors drop-shadow-md lg:group-hover:scale-110 duration-300" />
               <span className="text-xs font-bold text-white">{482 + comments.length - 3}</span>
             </button>
-            <button onClick={(e) => { setShowShareMenu(true); addRipple(e); }} className="flex flex-col items-center gap-1 group ml-auto bg-white/10 hover:bg-white/20 transition px-5 py-2 rounded-2xl backdrop-blur-md border border-white/5">
-              <Share className="w-5 h-5 text-white" />
+            <button onClick={(e) => { setShowShareMenu(true); addRipple(e); }} className="flex flex-col items-center gap-1 group">
+              <Share className="w-7 h-7 text-white group-hover:text-[#B026FF] transition-colors drop-shadow-md lg:group-hover:scale-110 duration-300" />
               <span className="text-xs font-bold text-white">Share</span>
+            </button>
+            <button 
+              onClick={(e) => { 
+                addRipple(e);
+                if (!isSaved) showToast("Post saved! ✅");
+                setIsSaved(!isSaved); 
+              }} 
+              className="flex flex-col items-center gap-1 group ml-auto bg-white/10 hover:bg-white/20 transition px-5 py-2 rounded-2xl backdrop-blur-md border border-white/5"
+            >
+              <Bookmark className={`w-5 h-5 transition-all duration-300 lg:group-hover:scale-110 ${isSaved ? "text-[#B026FF] fill-[#B026FF]" : "text-white group-hover:text-[#B026FF]"}`} />
+              <span className="text-xs font-bold text-white">{isSaved ? "Saved" : "Save"}</span>
             </button>
           </div>
 
@@ -824,13 +812,12 @@ export function ImmersivePostViewer({ initialIndex, type, urls, user, onClose }:
       <AnimatePresence>
         {toastMessage && (
           <motion.div
-            initial={{ opacity: 0, y: 50 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            className="absolute bottom-24 z-[60] bg-[#B026FF] text-white px-5 py-2.5 rounded-full shadow-lg font-semibold text-sm flex items-center gap-2"
+            className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] bg-[rgba(20,20,20,0.95)] backdrop-blur-md border border-[#B026FF] shadow-lg px-4 py-3 rounded-xl flex items-center gap-2 w-max max-w-[90vw]"
           >
-            <Zap className="w-4 h-4 fill-white" />
-            {toastMessage}
+            <span className="text-white text-sm font-medium">{toastMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>

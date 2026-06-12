@@ -8,7 +8,7 @@ export function ReactionRow({
   className = "" 
 }: { 
   initialReactions: Record<string, number>, 
-  onReact?: (reactionId: string | null) => void,
+  onReact?: (reactionId: string | null, reaction?: typeof SKRIM_REACTIONS[0]) => void,
   className?: string
 }) {
   const [activeReactionId, setActiveReactionId] = useState<string | null>(null);
@@ -24,6 +24,12 @@ export function ReactionRow({
 
   // Sort descending by count
   allReactions.sort((a, b) => b.count - a.count);
+
+  const formatCount = (num: number) => {
+    if (num >= 1000000) return (num/1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num/1000).toFixed(1) + 'K';
+    return num.toString();
+  };
 
   const handleTap = (rId: string) => {
     let newCounts = { ...counts };
@@ -54,7 +60,7 @@ export function ReactionRow({
     setCounts(newCounts);
     setActiveReactionId(newActive);
     if (onReact) {
-      onReact(newActive);
+      onReact(newActive, newActive ? SKRIM_REACTIONS.find(x => x.id === newActive) : undefined);
     }
   };
 
@@ -131,7 +137,7 @@ export function ReactionRow({
                     color: isActive ? r.color : 'white' 
                   }}
                 >
-                  {r.count >= 1000 ? parseFloat((r.count/1000).toFixed(1)) + 'K' : r.count}
+                  {formatCount(r.count)}
                 </span>
               </div>
             </motion.div>

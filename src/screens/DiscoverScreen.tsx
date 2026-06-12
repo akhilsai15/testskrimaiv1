@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, TrendingUp, Users, Crown, Sparkles, Zap } from 'lucide-react';
 import { AvatarWithRing, FollowButton } from '../components/ui';
 import { searchUsers } from '../lib/mock/mockServices';
@@ -7,6 +7,7 @@ import { FEATURE_FLAGS } from '../lib/config/featureFlags';
 import { BadgeRow } from '../components/BadgeComponents';
 import { generateMockStatsForBadge } from '../lib/mock/mockBadges';
 import { useAchievements, getTrackingStats } from '../lib/mock/achievementEngine';
+import { mockSparks } from '../lib/mock/mockData';
 import { motion } from 'motion/react';
 
 function WeeklyLeaderboard() {
@@ -70,20 +71,39 @@ function WeeklyLeaderboard() {
 
 export default function DiscoverScreen() {
   const navigate = useNavigate();
-  const [query, setQuery] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('tag') ? `#${searchParams.get('tag')}` : '');
   const [results, setResults] = useState<any[]>([]);
+  const [sparkResults, setSparkResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     if (!query) {
       setResults([]);
+      setSparkResults([]);
+      if (searchParams.has('tag')) {
+        setSearchParams(new URLSearchParams());
+      }
       return;
     }
     const doSearch = async () => {
       setSearching(true);
       if (FEATURE_FLAGS.MOCK_MODE) {
-        const matchingUsers = await searchUsers(query);
-        setResults(matchingUsers);
+        if (query.startsWith('#')) {
+          setResults([]);
+          // search sparks with tags
+          const searchTag = query.toLowerCase();
+          const allSparks = [...mockSparks, ...(JSON.parse(localStorage.getItem('skrimchat_sparks') || '[]'))];
+          const matches = allSparks.filter(s => {
+             const ht = s.hashtags || [];
+             return ht.some((h: string) => h?.toLowerCase() === searchTag);
+          });
+          setSparkResults(matches);
+        } else {
+          setSparkResults([]);
+          const matchingUsers = await searchUsers(query);
+          setResults(matchingUsers);
+        }
       }
       setSearching(false);
     };
@@ -127,6 +147,34 @@ export default function DiscoverScreen() {
                      <FollowButton username={user.username} initialCount={user.followers} />
                   </div>
                ))
+             ) : sparkResults.length > 0 ? (
+               <div className="grid grid-cols-3 gap-2">
+                  {sparkResults.map((spark) => (
+                    <div 
+                      key={spark.id} 
+                      onClick={() => navigate(`/identity`)} 
+                      className="aspect-square rounded-xl overflow-hidden relative cursor-pointer group"
+                    >
+                      {spark.type === 'video' || spark.video ? (
+                        <video src={spark.video || spark.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform" muted loop autoPlay playsInline />
+                      ) : spark.image ? (
+                        <img src={spark.image} alt="spark" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      ) : (
+                        <div className="w-full h-full flex flex-col justify-center items-center p-2" style={{ background: spark.backgroundTheme || spark.background || '#121212' }}>
+                          <p className="text-[8px] text-white font-bold leading-tight line-clamp-3 text-center">{spark.text || spark.caption}</p>
+                        </div>
+                      )}
+                      
+                      <div className="absolute top-1 left-1 bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded flex items-center shadow">
+                        <span className="text-[8px] font-bold text-white tracking-wider">
+                          {(spark.type === 'video' || spark.video) ? '🎥 VIDEO' : spark.image ? '🖼️ IMAGE' : '📝 TEXT'}
+                        </span>
+                      </div>
+
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                 ))}
+               </div>
              ) : (
                <p className="text-xs text-gray-500 text-center py-4">No results found.</p>
              )}
@@ -137,8 +185,8 @@ export default function DiscoverScreen() {
             <section>
                <h3 className="text-sm font-semibold text-gray-400 mb-3 flex items-center gap-2"><TrendingUp className="w-4 h-4"/> Trending Hashtags</h3>
                <div className="flex flex-wrap gap-2">
-                 {['#DigitalArt', '#TechTalk', '#NeonVibes', '#DailyVlog', '#CodingLife'].map(tag => (
-                   <span key={tag} className="px-4 py-2 bg-skrim-surface rounded-xl text-sm font-medium text-white border border-white/5 hover:border-white/20 transition-colors cursor-pointer">
+                 {['#GymLife', '#Cricket', '#Food', '#Bollywood', '#Gaming'].map(tag => (
+                   <span key={tag} onClick={() => setQuery(tag)} className="px-4 py-2 bg-skrim-surface rounded-xl text-sm font-medium text-white border border-white/5 hover:border-white/20 transition-colors cursor-pointer">
                      {tag}
                    </span>
                  ))}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Edit3, Share, Camera, MapPin, Link as LinkIcon, Plus, X, Zap, Eye, Calendar, Smile, Bookmark, Repeat, User as UserIcon, LogOut, Settings, Bell, Users, BarChart3, DollarSign, Shield, PlaySquare, Heart, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { mockPosts, mockUsers } from '../lib/mock/mockData';
+import { mockPosts, mockUsers, mockReels, mockSparks } from '../lib/mock/mockData';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '../hooks/useCurrentUser';
@@ -12,6 +12,8 @@ import { StatBreakdownSheet } from '../components/StatBreakdownSheet';
 import { BadgeRow } from '../components/BadgeComponents';
 import { generateMockStatsForBadge } from '../lib/mock/mockBadges';
 import { useDailyMissions } from '../lib/mock/achievementEngine';
+import { SparkViewer } from '../components/SparkViewer';
+import { HighlightAvatar } from '../components/HighlightAvatar';
 
 const CountUp = ({ end, decimals = 0, suffix = "", prefix = "" }: { end: number, decimals?: number, suffix?: string, prefix?: string }) => {
   const [count, setCount] = useState(0);
@@ -84,11 +86,13 @@ function DailyMissionsCard() {
   );
 }
 
+
 export default function IdentityScreen() {
   const { setAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const user = useCurrentUser();
   const [posts, setPosts] = useState<any[]>([]);
+  const [savedItems, setSavedItems] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('posts');
   const [selectedMedia, setSelectedMedia] = useState<{index: number, type: 'post'|'vibe'|'saved'|'repost'|'tagged'|string, urls: string[]} | null>(null);
@@ -106,6 +110,39 @@ export default function IdentityScreen() {
   const [showShareSheet, setShowShareSheet] = useState(false);
   const [statsData, setStatsData] = useState({ pulse: 4200, blaze: 12, views: 892, vibe: 9.1, followers: 850 });
   const [activeStatType, setActiveStatType] = useState<'pulse' | 'blaze' | 'views' | 'vibe' | null>(null);
+  const [highlights, setHighlights] = useState<any[]>([]);
+  const [activeHighlightGroup, setActiveHighlightGroup] = useState<any[]>([]);
+  const [activeHighlightName, setActiveHighlightName] = useState<string>('');
+  const [isHighlightViewer, setIsHighlightViewer] = useState<boolean>(true);
+  const [activeHighlightOptions, setActiveHighlightOptions] = useState<any | null>(null);
+  const [activeHighlightRename, setActiveHighlightRename] = useState<any | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<any | null>(null);
+  const [renameInput, setRenameInput] = useState('');
+  const pressTimer = useRef<NodeJS.Timeout | null>(null);
+  const [pressingId, setPressingId] = useState<string | null>(null);
+
+
+
+  useEffect(() => {
+    const fetchHighlights = () => {
+      const storedH = localStorage.getItem('skrimchat_highlights');
+      if (storedH) {
+        let parsed = JSON.parse(storedH);
+        if (!Array.isArray(parsed)) parsed = [];
+        setHighlights(parsed);
+      } else {
+        setHighlights([]);
+      }
+    };
+    fetchHighlights();
+    const handleHighlightEvent = () => fetchHighlights();
+    window.addEventListener('highlightSaved', handleHighlightEvent);
+    const intv = setInterval(fetchHighlights, 1000);
+    return () => {
+      clearInterval(intv);
+      window.removeEventListener('highlightSaved', handleHighlightEvent);
+    };
+  }, []);
 
   useEffect(() => {
     // Quick initialize stats
@@ -149,9 +186,7 @@ export default function IdentityScreen() {
   const modalAvatarInputRef = useRef<HTMLInputElement>(null);
   const modalCoverInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    setPosts(mockPosts.slice(0, 9)); 
-  }, []);
+
 
   useEffect(() => {
     if (user) {
@@ -245,6 +280,23 @@ export default function IdentityScreen() {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+
+
+  const handleHighlightClick = (h: any) => {
+    if (!h.id) return;
+    setActiveHighlightName(h.title);
+    setIsHighlightViewer(true);
+    setActiveHighlightGroup([{
+      userId: 'highlight',
+      id: h.id, // Store original highlight id
+      emoji: h.emoji,
+      user: { id: 'highlight', displayName: h.title, username: '', avatar: h.cover || h.sparks?.[0]?.image || h.sparks?.[0]?.backgroundTheme || h.sparks?.[0]?.background },
+      sparks: h.sparks || [],
+      hasViewed: true,
+      isOwn: true
+    }]);
   };
 
   if (!user) return <div className="p-8 text-center text-white">Loading...</div>;
@@ -380,6 +432,77 @@ export default function IdentityScreen() {
           </button>
         </div>
       </div>
+
+
+
+      {/* SECTION 3.5 - Spark Highlights */}
+      {highlights.length > 0 && (
+        <div className="px-6 mb-8">
+           <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2 items-start">
+              {highlights.map((h) => {
+              const cover = h.cover;
+              const isImage = cover?.startsWith('http') || cover?.startsWith('data:');
+              const bgs: Record<string, string> = {
+                'purple': 'linear-gradient(to bottom right, #B026FF, #00F0FF)',
+                'rose': 'linear-gradient(to bottom, #FF416C, #FF4B2B)',
+                'dark': '#121212',
+                'orange-red': 'linear-gradient(to bottom right, #FF8A00, #FF0000)',
+                'cyan-blue': 'linear-gradient(to bottom right, #00FFFF, #0000FF)',
+                'green-teal': 'linear-gradient(to bottom right, #00FF00, #008080)',
+                'pink-purple': 'linear-gradient(to bottom right, #FF00FF, #800080)',
+                'gold-orange': 'linear-gradient(to bottom right, #FFD700, #FFA500)',
+              };
+              const bgStyle = isImage ? {} : { background: cover?.includes('gradient') || cover?.startsWith('#') ? cover : (bgs[cover] || bgs['purple']) };
+
+              return (
+                <motion.div 
+                  key={h.id} 
+                  animate={{ scale: pressingId === h.id ? 0.9 : 1 }}
+                  onMouseDown={() => {
+                    setPressingId(h.id);
+                    pressTimer.current = setTimeout(() => {
+                      setPressingId(null);
+                      setActiveHighlightOptions(h);
+                    }, 600);
+                  }}
+                  onMouseUp={() => {
+                    if (pressTimer.current) clearTimeout(pressTimer.current);
+                    if (pressingId === h.id) {
+                      setPressingId(null);
+                      handleHighlightClick(h);
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    if (pressTimer.current) clearTimeout(pressTimer.current);
+                    setPressingId(null);
+                  }}
+                  onTouchStart={() => {
+                    setPressingId(h.id);
+                    pressTimer.current = setTimeout(() => {
+                      setPressingId(null);
+                      setActiveHighlightOptions(h);
+                    }, 600);
+                  }}
+                  onTouchEnd={() => {
+                    if (pressTimer.current) clearTimeout(pressTimer.current);
+                    if (pressingId === h.id) {
+                      setPressingId(null);
+                      handleHighlightClick(h);
+                    }
+                  }}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                  }}
+                  className="flex flex-col items-center gap-2 shrink-0 cursor-pointer group"
+                >
+                  <HighlightAvatar emoji={h.emoji || "✨"} theme={bgStyle.background as string} size={64} />
+                  <span className="text-xs font-semibold text-gray-300 pointer-events-none mt-1">{h.title}</span>
+                </motion.div>
+              );
+            })}
+         </div>
+      </div>
+      )}
 
       {/* SECTION 4 - Quick Stats Cards */}
       <div className="flex overflow-x-auto no-scrollbar gap-3 px-6 mb-8 snap-x">
@@ -548,7 +671,33 @@ export default function IdentityScreen() {
           </div>
         )}
 
-        {(activeTab === 'saved' || activeTab === 'reposts' || activeTab === 'tagged') && (
+        {activeTab === 'saved' && (
+          <div className="grid grid-cols-3 gap-0.5 pt-0.5">
+            {savedItems.length === 0 ? (
+               <div className="col-span-3 text-center py-20 text-gray-500 text-sm">No saved posts yet.</div>
+            ) : savedItems.map((item, i) => {
+              const url = item.image || item.videoImageHover || item.videoImage;
+              return (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: (i % 6) * 0.05 }}
+                key={`saved-${item.id}`} 
+                className="aspect-square bg-white/5 relative group cursor-pointer overflow-hidden"
+                onClick={() => setSelectedMedia({ 
+                  index: i, 
+                  type: 'saved', 
+                  urls: savedItems.map(it => it.image || it.videoImageHover || it.videoImage)
+                })}
+              >
+                <img src={url} alt="saved" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <div className="absolute top-2 right-2"><Bookmark className="w-4 h-4 fill-white text-white drop-shadow-md" /></div>
+              </motion.div>
+            )})}
+          </div>
+        )}
+
+        {(activeTab === 'reposts' || activeTab === 'tagged') && (
           <div className="grid grid-cols-3 gap-0.5 pt-0.5">
             {posts.slice(0, 6).map((post, i) => {
               const url = `https://picsum.photos/400/400?random=${i+30+activeTab.charCodeAt(0)}`;
@@ -731,6 +880,191 @@ export default function IdentityScreen() {
         type={activeStatType}
         stats={statsData}
       />
+
+      {activeHighlightGroup.length > 0 && (
+        <SparkViewer
+          groupedSparks={activeHighlightGroup}
+          initialUserIndex={0}
+          onClose={() => {
+            setActiveHighlightGroup([]);
+            setActiveHighlightName('');
+            setIsHighlightViewer(true);
+          }}
+          currentUser={user}
+          isHighlightMode={isHighlightViewer}
+          highlightName={activeHighlightName}
+          onDelete={(sparkId) => {
+             // Let's remove it from activeHighlightGroup if there
+             setActiveHighlightGroup(prev => {
+                if (prev.length === 0) return prev;
+                const newSparks = prev[0].sparks.filter((s:any) => s.id !== sparkId);
+                return [{ ...prev[0], sparks: newSparks }];
+             });
+          }}
+        />
+      )}
+
+
+
+      {/* Highlight Options Sheet */}
+      <AnimatePresence>
+        {activeHighlightOptions && (
+          <div className="fixed inset-0 z-[1000] flex flex-col justify-end">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setActiveHighlightOptions(null)}
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative bg-[#1A1A1A]/90 backdrop-blur-xl border-t border-white/10 rounded-t-3xl pb-safe pointer-events-auto"
+            >
+              <div className="w-12 h-1.5 bg-[#B026FF] rounded-full mx-auto my-4 opacity-80" />
+              
+              <div className="px-4 pb-6 space-y-2">
+                <button
+                  onClick={() => {
+                    setRenameInput(activeHighlightOptions.title);
+                    setActiveHighlightRename(activeHighlightOptions);
+                    setActiveHighlightOptions(null);
+                  }}
+                  className="w-full h-[52px] flex items-center px-4 bg-white/5 hover:bg-white/10 active:scale-95 transition-all rounded-2xl text-left"
+                >
+                  <span className="text-xl mr-3">🏷️</span>
+                  <span className="font-semibold text-white">Rename Highlight</span>
+                </button>
+
+                <div className="h-px w-full bg-white/10 my-1" />
+
+                <button
+                  onClick={() => {
+                    const highlightToDelete = activeHighlightOptions;
+                    setActiveHighlightOptions(null);
+                    setConfirmDialog({
+                      visible: true,
+                      title: "Delete Highlight?",
+                      message: "This cannot be undone.",
+                      onConfirm: () => {
+                        const updated = highlights.filter((h) => h.id !== highlightToDelete.id);
+                        localStorage.setItem("skrimchat_highlights", JSON.stringify(updated));
+                        setHighlights(updated);
+                        setToastMessage("🗑️ Highlight deleted");
+                        setTimeout(() => setToastMessage(""), 2000);
+                        setConfirmDialog(null);
+                      }
+                    });
+                  }}
+                  className="w-full h-[52px] flex items-center px-4 bg-white/5 hover:bg-red-500/10 active:scale-95 transition-all rounded-2xl text-left"
+                >
+                  <span className="text-xl mr-3">🗑️</span>
+                  <span className="font-semibold text-red-500">Delete Highlight</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Rename Highlight Modal */}
+      <AnimatePresence>
+        {activeHighlightRename && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setActiveHighlightRename(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-sm bg-[#1a1a1a] border border-white/10 rounded-3xl p-6 shadow-2xl"
+            >
+              <h3 className="text-xl font-bold text-white mb-4">Rename Highlight</h3>
+              <input
+                autoFocus
+                type="text"
+                value={renameInput}
+                onChange={(e) => setRenameInput(e.target.value)}
+                className="w-full bg-black/50 border border-white/20 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#B026FF] transition-colors mb-6"
+                placeholder="Highlight Name"
+              />
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setActiveHighlightRename(null)}
+                  className="px-5 py-2.5 rounded-xl font-semibold text-white/70 hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  disabled={!renameInput.trim()}
+                  onClick={() => {
+                    const updated = highlights.map((h) => 
+                      h.id === activeHighlightRename.id 
+                        ? { ...h, title: renameInput.trim() }
+                        : h
+                    );
+                    localStorage.setItem("skrimchat_highlights", JSON.stringify(updated));
+                    setHighlights(updated);
+                    setToastMessage("✅ Highlight renamed");
+                    setTimeout(() => setToastMessage(""), 2000);
+                    setActiveHighlightRename(null);
+                  }}
+                  className="px-5 py-2.5 rounded-xl font-bold text-white bg-gradient-to-r from-[#B026FF] to-[#00F0FF] disabled:opacity-50 transition-opacity"
+                >
+                  Save
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirm Dialog */}
+      <AnimatePresence>
+        {confirmDialog && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setConfirmDialog(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-sm bg-[#1a1a1a] border border-white/10 rounded-3xl p-6 shadow-2xl"
+            >
+              <h3 className="text-xl font-bold text-white mb-2">{confirmDialog.title}</h3>
+              <p className="text-gray-400 mb-6">{confirmDialog.message}</p>
+              
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={confirmDialog.onConfirm}
+                  className="w-full py-3.5 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 active:scale-95 transition-all"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setConfirmDialog(null)}
+                  className="w-full py-3.5 rounded-xl font-bold text-white/70 bg-white/5 hover:bg-white/10 active:scale-95 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
