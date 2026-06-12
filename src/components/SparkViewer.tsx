@@ -760,13 +760,14 @@ export function SparkViewer({
                         <>
                           <video
                             ref={videoRef}
-                            src={spark.video}
+                            src={spark.video || "https://www.w3schools.com/html/mov_bbb.mp4"}
                             className="w-full h-full object-cover"
                             autoPlay
                             muted={isMuted}
                             controls={false}
                             loop
                             playsInline
+                            onError={(e) => console.log('Spark video play error', e)}
                           />
                           <button
                             onClick={(e) => {
@@ -1482,10 +1483,11 @@ export function SparkViewer({
                       <div className="w-12 h-16 rounded bg-black/50 overflow-hidden shrink-0">
                         {spark.type === "video" ? (
                           <video
-                            src={spark.video}
+                            src={spark.video || "https://www.w3schools.com/html/mov_bbb.mp4"}
                             className="w-full h-full object-cover"
                             muted
                             title="preview"
+                            onError={(e) => console.log('Spark video preview error', e)}
                           />
                         ) : spark.type === "image" ? (
                           <img

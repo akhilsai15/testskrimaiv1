@@ -548,6 +548,7 @@ export function SparkCreator({ isOpen, onClose, onPost }: SparkCreatorProps) {
                  controls={false}
                  onLoadedMetadata={handleVideoLoad}
                  onTimeUpdate={handleTimeUpdate}
+                 onError={(e) => console.log('SparkCreator preview error', e)}
                />
                <div className="absolute top-[80px] right-4 bg-black/60 backdrop-blur-md px-2 py-1 rounded flex items-center border border-white/10 z-10 shadow-lg">
                  <span className="text-[10px] uppercase font-bold text-white tracking-wider">{isVideoMuted ? '🔇 Muted' : '🔊 Audio On'}</span>

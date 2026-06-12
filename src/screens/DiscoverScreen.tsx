@@ -156,7 +156,7 @@ export default function DiscoverScreen() {
                       className="aspect-square rounded-xl overflow-hidden relative cursor-pointer group"
                     >
                       {spark.type === 'video' || spark.video ? (
-                        <video src={spark.video || spark.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform" muted loop autoPlay playsInline />
+                        <video src={spark.video || spark.image || "https://www.w3schools.com/html/mov_bbb.mp4"} className="w-full h-full object-cover group-hover:scale-105 transition-transform" muted loop autoPlay playsInline onError={(e) => console.log('Discover video error', e)} />
                       ) : spark.image ? (
                         <img src={spark.image} alt="spark" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                       ) : (
