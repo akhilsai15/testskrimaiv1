@@ -14,10 +14,6 @@ import { generateMockStatsForBadge } from '../lib/mock/mockBadges';
 import { useDailyMissions } from '../lib/mock/achievementEngine';
 import { SparkViewer } from '../components/SparkViewer';
 import { HighlightAvatar } from '../components/HighlightAvatar';
-import { detectTextLanguage, saveProfileLanguage } from '../lib/utils/languageDetection';
-import { getPulseLevel } from '../components/PulsePointsSystem';
-import { BlazeRunProfileCard } from '../components/BlazeRunSystem';
-import { WatchStatsProfile } from '../components/WatchRewardsSystem';
 
 const CountUp = ({ end, decimals = 0, suffix = "", prefix = "" }: { end: number, decimals?: number, suffix?: string, prefix?: string }) => {
   const [count, setCount] = useState(0);
@@ -91,78 +87,6 @@ function DailyMissionsCard() {
 }
 
 
-function ShareStatsProfile() {
-  const [stats, setStats] = useState<any>(null);
-
-  useEffect(() => {
-    const data = JSON.parse(localStorage.getItem("skrimchat_all_shares") || 'null');
-    if (data && data.totalShares > 0) {
-       setStats(data);
-    }
-  }, []);
-
-  if (!stats) return null;
-
-  const topPlatforms = Object.entries(stats.byPlatform as Record<string, number>)
-     .sort((a, b) => b[1] - a[1])
-     .slice(0, 5);
-
-  const topMood = Object.entries(stats.byMood as Record<string, number>)
-     .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-
-  const topLang = Object.entries(stats.byLanguage as Record<string, number>)
-     .sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-
-  // Quick rough calculation of points earned from sharing
-  // (Assuming average 3 pts per share if exact points not stored)
-  const estimatedPoints = stats.totalShares * 3;
-
-  return (
-    <div className="px-6 mb-8">
-       <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 shadow-lg relative overflow-hidden">
-          <div className="flex justify-between items-start mb-4 pb-4 border-b border-white/10">
-             <div>
-                <h3 className="text-sm font-bold text-white tracking-widest uppercase flex items-center gap-2">
-                   📤 Share Stats
-                </h3>
-             </div>
-             <div className="text-right">
-                <span className="text-xs text-gray-400 font-medium block">Total Shares</span>
-                <span className="text-xl font-black text-white">{stats.totalShares}</span>
-             </div>
-          </div>
-          
-          <div className="space-y-2 mb-4">
-             {topPlatforms.map(([platform, count], i) => (
-                <div key={platform} className="flex justify-between items-center text-xs">
-                   <div className="flex items-center gap-2">
-                      <span className="w-4 text-center">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : ''}</span>
-                      <span className="font-semibold text-gray-200 capitalize">{platform}</span>
-                   </div>
-                   <span className="font-bold text-white bg-white/10 px-2 py-0.5 rounded-full">{count as number}</span>
-                </div>
-             ))}
-          </div>
-
-          <div className="bg-black/30 rounded-xl p-3 space-y-2 text-xs font-semibold text-gray-300">
-             <div className="flex justify-between">
-                <span>⚡ Points from shares:</span>
-                <span className="text-[#00F0FF]">~{estimatedPoints}</span>
-             </div>
-             <div className="flex justify-between">
-                <span>🔥 Top shared mood:</span>
-                <span className="text-white capitalize">{topMood}</span>
-             </div>
-             <div className="flex justify-between">
-                <span>🌍 Top language:</span>
-                <span className="text-white capitalize">{topLang}</span>
-             </div>
-          </div>
-       </div>
-    </div>
-  );
-}
-
 export default function IdentityScreen() {
   const { setAuthenticated } = useAuthStore();
   const navigate = useNavigate();
@@ -171,7 +95,7 @@ export default function IdentityScreen() {
   const [savedItems, setSavedItems] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('posts');
-  const [selectedMedia, setSelectedMedia] = useState<{index: number, type: 'post'|'vibe'|'saved'|'repost'|'tagged'|string, urls: string[], ids?: string[]} | null>(null);
+  const [selectedMedia, setSelectedMedia] = useState<{index: number, type: 'post'|'vibe'|'saved'|'repost'|'tagged'|string, urls: string[]} | null>(null);
   
   // Edit Profile States
   const [editName, setEditName] = useState('');
@@ -197,19 +121,7 @@ export default function IdentityScreen() {
   const pressTimer = useRef<NodeJS.Timeout | null>(null);
   const [pressingId, setPressingId] = useState<string | null>(null);
 
-  const handleEditNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const text = e.target.value;
-    setEditName(text);
-    const detected = detectTextLanguage(text);
-    if (detected) saveProfileLanguage(detected);
-  };
 
-  const handleEditBioChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    setEditBio(text);
-    const detected = detectTextLanguage(text);
-    if (detected) saveProfileLanguage(detected);
-  };
 
   useEffect(() => {
     const fetchHighlights = () => {
@@ -230,35 +142,6 @@ export default function IdentityScreen() {
       clearInterval(intv);
       window.removeEventListener('highlightSaved', handleHighlightEvent);
     };
-  }, []);
-
-  useEffect(() => {
-    const fetchSaved = () => {
-      let savedList = JSON.parse(localStorage.getItem('skrimchat_saved_posts') || '[]');
-      if (!Array.isArray(savedList)) savedList = [];
-      let savedSparks = JSON.parse(localStorage.getItem('skrimchat_saved_sparks') || '[]');
-      if (!Array.isArray(savedSparks)) savedSparks = [];
-      const combinedSavedList = [...savedList, ...savedSparks];
-      const savedObjects: any[] = [];
-      combinedSavedList.forEach((id: string) => {
-        const post = mockPosts.find(p => p.id === id);
-        if (post) {
-           savedObjects.push(post);
-        } else {
-           const reel = mockReels.find(r => r.id === id);
-           if (reel) {
-              savedObjects.push(reel);
-           } else {
-              const spark = mockSparks.find(s => s.id === id);
-              if (spark) savedObjects.push(spark);
-           }
-        }
-      });
-      setSavedItems(savedObjects);
-    };
-    fetchSaved();
-    const intv = setInterval(fetchSaved, 1000);
-    return () => clearInterval(intv);
   }, []);
 
   useEffect(() => {
@@ -474,31 +357,13 @@ export default function IdentityScreen() {
       {/* SECTION 2 - Identity Info */}
       <div className="px-6 pt-14 pb-4 relative z-10">
         <div className="flex justify-between items-start">
-          <div className="w-full">
+          <div>
             <div className="flex items-center gap-2 mb-1">
               <h1 className="text-xl font-bold text-white">{user.fullName || user.displayName || user.username?.replace('@', '') || 'No Name'}</h1>
-              <span className="bg-white/10 px-2 py-0.5 rounded text-[10px] items-center flex font-bold tracking-widest text-[#00F0FF] border border-[#00F0FF]/30 ml-2">
-                 {getPulseLevel(statsData.pulse).name.split(' ')[0]} Lvl {getPulseLevel(statsData.pulse).level}
-              </span>
             </div>
-            <p className="text-sm font-medium text-[#B026FF] mb-4">
+            <p className="text-sm font-medium text-[#B026FF] mb-2.5">
               {user.username?.startsWith('@') ? user.username : `@${user.username}`}
             </p>
-
-            {/* PULSE POINTS BAR */}
-            <div className="w-full max-w-sm mb-5 bg-[#141414] border border-white/10 rounded-xl p-3 shadow-lg">
-               <div className="flex justify-between items-center mb-2">
-                 <span className="text-sm font-bold text-white flex items-center gap-1.5"><span className="text-[#B026FF]">⚡</span> {statsData.pulse.toLocaleString()} Pulse Pts</span>
-                 <span className="text-xs font-bold text-gray-400">Level {getPulseLevel(statsData.pulse).level} {getPulseLevel(statsData.pulse).name.split(' ')[1] || getPulseLevel(statsData.pulse).name}</span>
-               </div>
-               <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
-                 <div className="h-full bg-gradient-to-r from-[#B026FF] to-[#00F0FF]" style={{ width: getPulseLevel(statsData.pulse).width }} />
-               </div>
-            </div>
-
-            <BlazeRunProfileCard />
-            <WatchStatsProfile />
-
             <div className="mb-4">
               <BadgeRow stats={{
                 pulseScore: statsData.pulse,
@@ -667,7 +532,6 @@ export default function IdentityScreen() {
 
       {/* SECTION 4.5 - Daily Missions */}
       <DailyMissionsCard />
-      <ShareStatsProfile />
 
       {/* SECTION 7 - Quick Access Icons */}
       <div className="flex overflow-x-auto no-scrollbar gap-3 px-6 mb-8">
@@ -687,11 +551,6 @@ export default function IdentityScreen() {
              <span className="text-xs font-semibold drop-shadow-md">{item.label}</span>
           </div>
         ))}
-        {/* Settings button */}
-        <div onClick={() => navigate('/settings')} className="flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer transition active:scale-95 bg-white/5 border border-white/10 text-gray-400 hover:text-white hover:border-[#B026FF] hover:drop-shadow-[0_0_8px_rgba(176,38,255,0.8)] active:bg-white/10">
-           <Settings className="w-4 h-4" />
-           <span className="text-xs font-semibold drop-shadow-md">Settings</span>
-        </div>
         {/* Added logout button nicely inside quick access */}
         <div onClick={() => setShowLogoutConfirm(true)} className="flex items-center gap-2 px-4 py-2 rounded-full cursor-pointer transition active:scale-95 bg-red-500/10 border border-red-500/30 text-red-500 hover:text-white hover:border-red-500 hover:drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] active:bg-red-500">
            <LogOut className="w-4 h-4" />
@@ -740,7 +599,7 @@ export default function IdentityScreen() {
           {[
             { id: 'posts', icon: <div className="w-4 h-4 grid grid-cols-2 gap-0.5"><div className="border border-current rounded-[2px]" /><div className="border border-current rounded-[2px]" /><div className="border border-current rounded-[2px]" /><div className="border border-current rounded-[2px]" /></div>, label: 'Posts' },
             { id: 'vibes', icon: <PlaySquare className="w-4 h-4" />, label: 'Vibes' },
-            { id: 'saved', icon: <span className="text-[14px]">📌</span>, label: 'Saved' },
+            { id: 'saved', icon: <Bookmark className="w-4 h-4" />, label: 'Saved' },
             { id: 'reposts', icon: <Repeat className="w-4 h-4" />, label: 'Reposts' },
             { id: 'tagged', icon: <UserIcon className="w-4 h-4" />, label: 'Tagged' },
           ].map(tab => (
@@ -774,8 +633,7 @@ export default function IdentityScreen() {
                 onClick={() => setSelectedMedia({ 
                   index: i, 
                   type: 'post', 
-                  urls: posts.map((_, idx) => `https://picsum.photos/400/400?random=${idx+10}`),
-                  ids: posts.map(p => p.id)
+                  urls: posts.map((_, idx) => `https://picsum.photos/400/400?random=${idx+10}`)
                 })}
               >
                 <img src={url} alt="post" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -798,8 +656,7 @@ export default function IdentityScreen() {
                 onClick={() => setSelectedMedia({ 
                   index: i, 
                   type: 'vibe', 
-                  urls: posts.slice(0, 6).map((_, idx) => `https://picsum.photos/400/700?random=${idx+20}`),
-                  ids: posts.slice(0, 6).map(p => p.id)
+                  urls: posts.slice(0, 6).map((_, idx) => `https://picsum.photos/400/700?random=${idx+20}`)
                 })}
               >
                 <img src={url} alt="vibe" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -815,20 +672,11 @@ export default function IdentityScreen() {
         )}
 
         {activeTab === 'saved' && (
-          <div className="flex flex-col pt-0.5">
-            <div className="px-4 py-3 bg-white/5 border-b border-white/10 mb-0.5 flex items-center justify-between">
-              <h2 className="text-white font-bold tracking-tight text-sm flex items-center gap-2">
-                <span className="text-[14px]">📌</span> SAVED VIBES
-              </h2>
-              <span className="text-white/50 text-xs font-semibold px-2 py-0.5 bg-black/50 rounded-full">
-                {savedItems.length}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-0.5">
-              {savedItems.length === 0 ? (
-                 <div className="col-span-3 text-center py-20 text-gray-500 text-sm">No saved posts yet.</div>
-              ) : savedItems.map((item, i) => {
-              const url = item.image || item.videoImageHover || item.videoImage || `https://picsum.photos/400/400?random=${i+999}`;
+          <div className="grid grid-cols-3 gap-0.5 pt-0.5">
+            {savedItems.length === 0 ? (
+               <div className="col-span-3 text-center py-20 text-gray-500 text-sm">No saved posts yet.</div>
+            ) : savedItems.map((item, i) => {
+              const url = item.image || item.videoImageHover || item.videoImage;
               return (
               <motion.div 
                 initial={{ opacity: 0 }}
@@ -839,18 +687,13 @@ export default function IdentityScreen() {
                 onClick={() => setSelectedMedia({ 
                   index: i, 
                   type: 'saved', 
-                  urls: savedItems.map((it, idx) => it.image || it.videoImageHover || it.videoImage || `https://picsum.photos/400/400?random=${idx+999}`),
-                  ids: savedItems.map(it => it.id)
+                  urls: savedItems.map(it => it.image || it.videoImageHover || it.videoImage)
                 })}
               >
                 <img src={url} alt="saved" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                {item.id?.startsWith('reel_') && (
-                  <div className="absolute top-2 left-2"><PlaySquare className="w-4 h-4 text-white drop-shadow-md" /></div>
-                )}
                 <div className="absolute top-2 right-2"><Bookmark className="w-4 h-4 fill-white text-white drop-shadow-md" /></div>
               </motion.div>
             )})}
-            </div>
           </div>
         )}
 
@@ -868,8 +711,7 @@ export default function IdentityScreen() {
                 onClick={() => setSelectedMedia({ 
                   index: i, 
                   type: activeTab === 'reposts' ? 'repost' : activeTab as 'saved'|'tagged', 
-                  urls: posts.slice(0, 6).map((_, idx) => `https://picsum.photos/400/400?random=${idx+30+activeTab.charCodeAt(0)}`),
-                  ids: posts.slice(0, 6).map(p => p.id)
+                  urls: posts.slice(0, 6).map((_, idx) => `https://picsum.photos/400/400?random=${idx+30+activeTab.charCodeAt(0)}`)
                 })}
               >
                 <img src={url} alt={activeTab} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
@@ -888,7 +730,6 @@ export default function IdentityScreen() {
           initialIndex={selectedMedia.index}
           type={selectedMedia.type}
           urls={selectedMedia.urls}
-          ids={selectedMedia.ids}
           user={user}
           onClose={() => setSelectedMedia(null)}
         />
@@ -983,7 +824,7 @@ export default function IdentityScreen() {
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5 block">Full Name</label>
-                  <input type="text" value={editName} onChange={handleEditNameChange} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#B026FF] transition-colors" />
+                  <input type="text" value={editName} onChange={e => setEditName(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#B026FF] transition-colors" />
                 </div>
                 
                 <div>
@@ -999,7 +840,7 @@ export default function IdentityScreen() {
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Bio</label>
                     <span className="text-xs text-gray-500 font-semibold">{editBio.length}/150</span>
                   </div>
-                  <textarea maxLength={150} value={editBio} onChange={handleEditBioChange} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#B026FF] transition-colors min-h-[100px] resize-none" placeholder="Write something cool... ✨" />
+                  <textarea maxLength={150} value={editBio} onChange={e => setEditBio(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#B026FF] transition-colors min-h-[100px] resize-none" placeholder="Write something cool... ✨" />
                 </div>
 
                 <div>

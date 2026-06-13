@@ -262,30 +262,3 @@ body {
 .count-down {
   animation: countDown 300ms ease-in-out forwards;
 }
-
-@keyframes floatUpReaction {
-  0% {
-    transform: translate(0, 0) scale(0.5) rotate(0deg);
-    opacity: 0;
-  }
-  10% {
-    transform: translate(0, -50px) scale(1) rotate(5deg);
-    opacity: 1;
-  }
-  50% {
-    transform: translate(var(--drift-x), -350px) scale(1.1) rotate(-5deg);
-    opacity: 1;
-  }
-  100% {
-    transform: translate(calc(var(--drift-x) * 1.5), -650px) scale(0.8) rotate(10deg);
-    opacity: 0;
-  }
-}
-
-
-@keyframes pulseDot {
-  0% { opacity: 0.5; }
-  50% { opacity: 1; }
-  100% { opacity: 0.5; }
-}
-

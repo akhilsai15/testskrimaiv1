@@ -339,22 +339,13 @@ export const mockSparks = [
 ];
 
 const pulseCounts = [2400, 1800, 5600, 890, 12400, 3100, 4200, 150, 89000, 450];
-const reelLanguages = ["Hindi", "English", "Telugu", "Tamil", "Korean", "Spanish", "English", "Hindi"];
-const reelMoods = ["fitness", "comedy", "music", "gaming", "food", "lifestyle", "chill", "education", "motivation", "general"];
-
 export const mockReels = Array.from({ length: 10 }).map((_, i) => ({
   id: `reel_${i + 1}`,
   user: mockUsers[i % mockUsers.length].displayName,
   handle: `@${mockUsers[i % mockUsers.length].username}`,
   avatar: mockUsers[i % mockUsers.length].avatar,
-  creatorCountry: i === 0 ? "IN" : i === 1 ? "IN" : i === 2 ? "US" : i === 3 ? "KR" : "IN",
-  creatorRegion: i === 0 ? "Andhra Pradesh" : i === 1 ? "Maharashtra" : i === 2 ? "California" : i === 3 ? "Seoul" : "Delhi",
-  creatorCity: i === 0 ? "Hyderabad" : i === 1 ? "Mumbai" : i === 2 ? "Los Angeles" : i === 3 ? "Seoul" : "New Delhi",
-  videoImageHover: `https://peach.blender.org/wp-content/uploads/title_anouncement.jpg?x11217`,
+  videoImageHover: `https://picsum.photos/400/700?random=${i + 200}`,
   caption: `Watching the sunset code run! 🌇🚀 #coding #reels #${i}`,
-  mood: reelMoods[i % reelMoods.length],
-  language: reelLanguages[i % reelLanguages.length],
-  additionalLanguages: [],
   audio: `Original Audio - ${mockUsers[i % mockUsers.length].displayName}`,
   pulseCount: pulseCounts[i % pulseCounts.length],
   comments: `${Math.floor(Math.random() * 5)}K`,
